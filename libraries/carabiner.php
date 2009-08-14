@@ -16,25 +16,26 @@
  * automatically as needed.
  *
  * Notes: Carabiner does not implement GZIP encoding, because I think that the web server should  
- * handle that.  If you need GZIP in an Asset Library, AssetLibPro {@link http://code.google.com/p/assetlib-pro/ }
+ * handle that.  If you need GZIP in an Asset Library, AssetLibPro {@link http://code.google.com/p/assetlib-pro/}
  * does it.  I've also chosen not to implement any kind of javascript obfuscation (like packer), 
- * because of the client-side decompression overhead. More about this idea from {@link http://ejohn.org/blog/library-loading-speed/ John Resig }.
+ * because of the client-side decompression overhead. More about this idea from {@link http://ejohn.org/blog/library-loading-speed/ John Resig}.
  * However, that's not to say you can't do it.  You can easily provide a production version of a script
  * that is packed.  However, note that combining a packed script with minified scripts could cause
  * problems.  In that case, you can flag it to be not combined.
  *
  * Carabiner is inspired by Minify {@link http://code.google.com/p/minify/ by Steve Clay}, PHP 
- * Combine {@link http://rakaz.nl/extra/code/combine/ by Niels Leenheer } and AssetLibPro 
- * {@link http://code.google.com/p/assetlib-pro/ by Vincent Esche }, among other things.
+ * Combine {@link http://rakaz.nl/extra/code/combine/ by Niels Leenheer} and AssetLibPro 
+ * {@link http://code.google.com/p/assetlib-pro/ by Vincent Esche}, among other things.
  *
  * @package		CodeIgniter
  * @subpackage	Libraries
  * @category	Asset Management
  * @author		Tony Dewan <tonydewan.com/contact>	
- * @version		1.43
+ * @version		1.45
  * @license		http://www.opensource.org/licenses/bsd-license.php BSD licensed.
  *
  * @todo		fix new bugs. Duh.
+ * @todo		check for 'absolute' path in asset references
  */
 
 /*
@@ -70,7 +71,7 @@
 	-----------------------------------------------------------------------------------------------
 	
 	
-	There are 8 options. 3 are required:
+	There are 9 options. 3 are required:
 	
 	script_dir
 	STRING Path to the script directory.  Relative to the CI front controller (index.php)
@@ -82,7 +83,7 @@
 	STRING Path to the cache directory.  Must be writable. Relative to the CI front controller (index.php)
 	
 	
-	5 are not required:
+	6 are not required:
 
 	base_uri
 	STRING Base uri of the site, like http://www.example.com/ Defaults to the CI config value for 
@@ -100,6 +101,9 @@
 	
 	minify_css
 	BOOLEAN Flags whether to minify CSS. Defaults to TRUE.
+	
+	force_curl
+	BOOLEAN Flags whether cURL should always be used for URL file references. Defaults to FALSE.
 	
 	
 	Add assets like so:
@@ -192,6 +196,12 @@
 		
 		// display group
 		$this->carabiner->display('jquery'); // group name defined as jquery
+
+		// display filterd group
+		$this->carabiner->display('main', 'js'); // group name defined as main, only display JS
+		
+		// return string of asset references
+		$string = $this->carabiner->display_string('main');
 	-----------------------------------------------------------------------------------------------
 	Note that the standard display function calls (the first 3 listed above) will only output
 	those assets not associated with a group (which are all included in the 'main' group).  Groups 
@@ -210,6 +220,12 @@
 		
 		// clear both
 		$this->carabiner->empty_cache(); // OR $this->carabiner->empty_cache('both');
+	
+		// clear before a certain date
+		$this->carabiner->empty_cache('both', 'now');	// String denoting a time before which cache 
+														// files will be removed.  Any string that 
+														// strtotime() can take is acceptable. 
+														// Defaults to 'now'.
 	-----------------------------------------------------------------------------------------------	
 	===============================================================================================
 */
@@ -235,9 +251,11 @@ class Carabiner {
 	
 	public $minify_js  = TRUE;
 	public $minify_css = TRUE;
+	public $force_curl = FALSE;
 	
 	private $js  = array('main'=>array());
 	private $css = array('main'=>array());
+	private $loaded = array();
 	
     private $CI;
 	
@@ -248,11 +266,11 @@ class Carabiner {
 	public function __construct()
 	{
 		$this->CI =& get_instance();
-		log_message('debug', 'Carabiner Library initialized.');
+		log_message('debug', 'Carabiner: Library initialized.');
 		
 		if( $this->CI->config->load('carabiner', TRUE, TRUE) ){
 		
-			log_message('debug', 'Carabiner config loaded from config file.');
+			log_message('debug', 'Carabiner: config loaded from config file.');
 			
 			$carabiner_config = $this->CI->config->item('carabiner');
 			$this->config($carabiner_config);
@@ -263,9 +281,10 @@ class Carabiner {
 
 	/** 
 	* Load Config
+	* @access	public
 	* @param	Array of config variables. Requires script_dir(string), style_dir(string), and cache_dir(string).
-	*			base_uri(string), dev(bool), combine(bool), minify_js(bool), minify_css(bool) are optional.
-	* @return   None
+	*			base_uri(string), dev(bool), combine(bool), minify_js(bool), minify_css(bool), and force_curl(bool) are optional.
+	* @return   Void
 	*/	
 	public function config($config)
 	{	
@@ -300,16 +319,18 @@ class Carabiner {
 		$this->cache_path = dirname(FCPATH).'/'.$this->cache_dir;
 		$this->cache_uri = $this->base_uri.$this->cache_dir;
 
-		log_message('debug', 'Carabiner configured.');
+		log_message('debug', 'Carabiner: library configured.');
 	}
 	
 	
 	/** 
 	* Add JS file to queue
+	* @access	public
 	* @param	String of the path to development version of the JS file.  Could also be an array, or array of arrays.
 	* @param	String of the path to production version of the JS file. NOT REQUIRED
 	* @param	Boolean flag whether the file is to be combined. NOT REQUIRED
-	* @return   None
+	* @param	String of the group name with which the asset is to be associated. NOT REQUIRED
+	* @return   Void
 	*/	
 	public function js($dev_file, $prod_file = '', $combine = TRUE, $minify = TRUE, $group = 'main')
 	{	
@@ -353,12 +374,14 @@ class Carabiner {
 	
 	/**
 	* Add CSS file to queue
+	* @access	public
 	* @param	String of the path to development version of the CSS file. Could also be an array, or array of arrays.
 	* @param	String of the media type, usually one of (screen, print, handheld) for css. Defaults to screen.
 	* @param	String of the path to production version of the CSS file. NOT REQUIRED
 	* @param	Boolean flag whether the file is to be combined. NOT REQUIRED
 	* @param	Boolean flag whether the file is to be minified. NOT REQUIRED
-	* @return   None
+	* @param	String of the group name with which the asset is to be associated. NOT REQUIRED
+	* @return   Void
 	*/		
 	public function css($dev_file, $media = 'screen', $prod_file = '', $combine = TRUE, $minify = TRUE, $group = 'main')
 	{
@@ -403,14 +426,16 @@ class Carabiner {
 	
 	/**
 	* Add Assets to a group
+	* @access	public
 	* @param	String of the name of the group.  should not contain spaces or punctuation
 	* @param	array of assets to be included in the group
+	* @return   Void
 	*/		
 	public function group($group_name, $assets)
 	{
 
 		if(!isset($assets['js']) && !isset($assets['css']) ){
-			log_message('error', "The asset group definition named '{$group_name}' does not contain a well formed array.");
+			log_message('error', "Carabiner: The asset group definition named '{$group_name}' does not contain a well formed array.");
 			return;
 		}
 
@@ -426,13 +451,15 @@ class Carabiner {
 	
 	/**
 	* Add an asset to queue
+	* @access	private
 	* @param	String of the type of asset (lowercase). css | js
 	* @param	String of the path to development version of the asset.
 	* @param	String of the path to production version of the asset. NOT REQUIRED
 	* @param	Boolean flag whether the file is to be combined. Defaults to true. NOT REQUIRED
 	* @param	Boolean flag whether the file is to be minified. Defaults to true. NOT REQUIRED
 	* @param	String of the media type associated with the asset.  Only applicable to CSS assets. NOT REQUIRED
-	* @return   None
+	* @param	String of the group name with which the asset is to be associated. NOT REQUIRED
+	* @return   Void
 	*/		
 	private function _asset($type, $dev_file, $prod_file = '', $combine, $minify, $media = 'screen', $group = 'main')
 	{
@@ -461,10 +488,12 @@ class Carabiner {
 
 	/** 
 	* Display HTML references to the assets
-	* @param	String flag the asset type: css || js
-	* @return   None
+	* @access	public
+	* @param	String flag the asset type: css || js || both, OR the group name
+	* @param	String flag the asset type to filter a group (e.g. only show 'js' for this group)
+	* @return   Void
 	*/		
-	public function display($flag = 'both')
+	public function display($flag = 'both', $group_filter = NULL)
 	{	
 
 		switch($flag){
@@ -485,20 +514,43 @@ class Carabiner {
 			break;
 			
 			default:
-				if( isset($this->js[$flag]) )
+				if( isset($this->js[$flag]) && ($group_filter == NULL || $group_filter == 'js') )
 					$this->_display_js($flag);
 				
-				if( isset($this->css[$flag]) )
+				if( isset($this->css[$flag]) && ($group_filter == NULL || $group_filter == 'css') )
 					$this->_display_css($flag);
 			break;
 		}
 	}
 
+
+	/** 
+	* HTML references to the assets, returned as a string
+	* @access	public
+	* @param	String flag the asset type: css || js || both, OR the group name
+	* @return   String of HTML references
+	*/
+	public function display_string($flag='both', $group_filter = NULL)
+	{
+		ob_start(); // note: according to the manual, nesting ob calls is okay
+					// so this shouldn't cause any problems even if you're using ob already
+		
+			$this->display($flag, $group_filter);
+		
+			$contents = ob_get_contents();
+
+		ob_end_clean();
+		
+		return $contents;
+
+	}
+
 	
 	/** 
 	* Display HTML references to the js assets
+	* @access	private
 	* @param	String of the asset group name
-	* @return   None
+	* @return   Void
 	*/		
 	private function _display_js($group = 'main')
 	{
@@ -642,8 +694,9 @@ class Carabiner {
 
 	/** 
 	* Display HTML references to the css assets
+	* @access	private
 	* @param	String of the asset group name
-	* @return   None
+	* @return   Void
 	*/		
 	private function _display_css($group = 'main')
 	{
@@ -794,10 +847,11 @@ class Carabiner {
 	
 	/** 
 	* Internal function for compressing/combining scripts
+	* @access	private
 	* @param	String flag the asset type: css|js
 	* @param	array of file references to be combined. Should contain arrays, as included in primary asset arrays: ('dev'=>$dev, 'prod'=>$prod, 'minify'=>TRUE||FALSE)
 	* @param	String of the filename of the file-to-be
-	* @return   None
+	* @return   Void
 	*/
 	private function _combine($flag, $files, $filename)
 	{
@@ -819,7 +873,7 @@ class Carabiner {
 			else:
 			
 				$r = ( $this->isURL($file[$v]) ) ? $file[$v] : realpath($path.$file[$v]);
-				$file_data .=  file_get_contents( $r ) ."\n";
+				$file_data .=  $this->_get_contents( $r ) ."\n";
 				
 			endif;
 		
@@ -832,6 +886,7 @@ class Carabiner {
 
 	/** 
 	* Internal function for minifying assets
+	* @access	private
 	* @param	String flag the asset type: css|js
 	* @param	String of the path to the file whose contents should be minified
 	* @return   String minified contents of file
@@ -846,9 +901,9 @@ class Carabiner {
 			
 			case 'js':
 			
-				$this->CI->load->library('jsmin');
+				$this->_load('jsmin');
 				
-				$contents = file_get_contents( $ref );
+				$contents = $this->_get_contents( $ref );
 				return $this->CI->jsmin->minify($contents);
 			
 			break;
@@ -856,22 +911,48 @@ class Carabiner {
 			
 			case 'css':
 			
-				$this->CI->load->library('cssmin');
+				$this->_load('cssmin');
 				
 				$rel = ( $this->isURL($file_ref) ) ? $file_ref : dirname($this->style_uri.$file_ref).'/';
 				$this->CI->cssmin->config(array('relativePath'=>$rel));
 				
-				$contents = file_get_contents( $ref );
+				$contents = $this->_get_contents( $file_ref );
 				return $this->CI->cssmin->minify($contents);
 			
 			break;
 		}
 	
 	}
-	
+
+	/** 
+	* Internal function for getting a files contents, using cURL or file_get_contents, depending on circumstances
+    * @access	private
+	* @param	String of full path to the file (or full URL, if appropriate)
+	* @return   String of files contents
+	*/
+	private function _get_contents($ref)
+	{
+
+		if( $this->isURL($ref) && ( ini_get('allow_url_fopen') == 0 || $this->force_curl ) ):
+
+			$this->_load('curl');
+			$this->CI->curl->open();
+			$contents = $this->CI->curl->http_get($ref);
+			$this->CI->curl->close();
+			
+		else:
+
+			$contents = file_get_contents( $ref );
+			
+		endif;
+		
+		return $contents;
+		
+	}
 	
 	/** 
 	* Internal function for writing cache files
+	* @access	private
 	* @param	String of filename of the new file
 	* @param	String of contents of the new file
 	* @return   boolean	Returns true on successful cache, false on failure
@@ -894,6 +975,7 @@ class Carabiner {
 	
 	/** 
 	* Internal function for making tag strings
+	* @access	private
 	* @param	String flag for type: css|js
 	* @param	String of reference of file. 
 	* @param	Boolean flag for cache dir.  Defaults to FALSE.
@@ -928,9 +1010,10 @@ class Carabiner {
 	
 	/** 
 	* Function used to clear the asset cache. If no flag is set, both CSS and JS will be emptied.
+	* @access	public
 	* @param	String flag the asset type: css|js|both
 	* @param	String denoting a time before which cache files will be removed.  Any string that strtotime() can take is acceptable. Defaults to now.
-	* @return   None
+	* @return   Void
 	*/		
 	public function empty_cache($flag = 'both', $before = 'now')
 	{
@@ -988,18 +1071,40 @@ class Carabiner {
 		}			
 	
 	}
+
+	/** 
+	* Function used to prevent multiple load calls for the same CI library
+	* @access	private
+	* @param	String library name
+	* @return   FALSE on empty call and when library is already loaded, true when library loaded
+	*/
+	private function _load($lib=NULL)
+	{
+		if($lib == NULL) return FALSE;
+		
+		if( isset($this->loaded[$lib]) ):
+			return FALSE;
+		else:
+			$this->CI->load->library($lib);
+			$this->loaded[] = $lib;
+			log_message('debug', 'Carabiner: Codeigniter library '."'$lib'".' loaded');
+			return TRUE;
+		endif;
+	}
 	
 	
 	/**
 	* isURL
-	* Allows for port, path and query string validations.  This should probably be moved into
-	* a helper file, but I hate to add a whole new file for one little 2-line function.
-	* @param	string	string containing url user input
+	* Checks if the provided string is a URL. Allows for port, path and query string validations.  
+	* This should probably be moved into a helper file, but I hate to add a whole new file for 
+	* one little 2-line function.
+	* @access	public
+	* @param	string to be checked
 	* @return   boolean	Returns TRUE/FALSE
 	*/
-	public static function isURL($url)
+	public static function isURL($string)
 	{
 		$pattern = '@(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@';
-		return preg_match($pattern, $url);
+		return preg_match($pattern, $string);
 	}
 }
