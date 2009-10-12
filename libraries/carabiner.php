@@ -1089,7 +1089,7 @@ class Carabiner {
 		else:
 			$this->CI->load->library($lib);
 			$this->loaded[$lib] = TRUE;
-			print_r($this->loaded);
+
 			log_message('debug', 'Carabiner: Codeigniter library '."'$lib'".' loaded');
 			return TRUE;
 		endif;
