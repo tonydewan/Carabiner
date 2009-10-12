@@ -310,13 +310,13 @@ class Carabiner {
 		if($this->base_uri == '') $this->base_uri = $this->CI->config->item('base_url');
 
 		// use the provided values to define the rest of them
-		$this->script_path = dirname(FCPATH).'/'.$this->script_dir;
+		$this->script_path = FCPATH.$this->script_dir;
 		$this->script_uri = $this->base_uri.$this->script_dir;
 		
-		$this->style_path = dirname(FCPATH).'/'.$this->style_dir;
+		$this->style_path = FCPATH.$this->style_dir;
 		$this->style_uri = $this->base_uri.$this->style_dir;
 
-		$this->cache_path = dirname(FCPATH).'/'.$this->cache_dir;
+		$this->cache_path = FCPATH.$this->cache_dir;
 		$this->cache_uri = $this->base_uri.$this->cache_dir;
 
 		log_message('debug', 'Carabiner: library configured.');
@@ -557,7 +557,6 @@ class Carabiner {
 
 		if( empty($this->js) ) return; // if there aren't any js files, just stop!
 		
-		
 		if( !isset($this->js[$group]) ): // the group you asked for doesn't exist. This should never happen, but better to be safe than sorry.
 
 			log_message('error', "Carabiner: The JavaScript asset group named '{$group}' does not exist.");
@@ -589,7 +588,7 @@ class Carabiner {
 				$lastmodified = max( $lastmodified , filemtime(realpath($this->script_path.$ref['dev'])) );
 
 				$filenames .= $ref['dev'];
-			
+
 				if(!$ref['combine']):
 					echo (isset($ref['prod'])) ? $this->_tag('js', $ref['prod']) : $this->_tag('js', $ref['dev']);					
 				elseif(!$ref['minify']):
@@ -915,8 +914,8 @@ class Carabiner {
 				
 				$rel = ( $this->isURL($file_ref) ) ? $file_ref : dirname($this->style_uri.$file_ref).'/';
 				$this->CI->cssmin->config(array('relativePath'=>$rel));
-				
-				$contents = $this->_get_contents( $file_ref );
+
+				$contents = $this->_get_contents( $ref );
 				return $this->CI->cssmin->minify($contents);
 			
 			break;
@@ -936,9 +935,7 @@ class Carabiner {
 		if( $this->isURL($ref) && ( ini_get('allow_url_fopen') == 0 || $this->force_curl ) ):
 
 			$this->_load('curl');
-			$this->CI->curl->open();
-			$contents = $this->CI->curl->http_get($ref);
-			$this->CI->curl->close();
+			$contents = $this->CI->curl->simple_get($ref);
 			
 		else:
 
@@ -959,7 +956,12 @@ class Carabiner {
 	*/
 	private function _cache($filename, $file_data)
 	{
-
+		
+		if(empty($file_data)):
+			log_message('debug', 'Carabiner: Cache file '.$filename.' was empty and therefore not written to disk at '.$this->cache_path);
+			return false;
+		endif;
+		
 		$filepath = $this->cache_path . $filename;
 		$success = file_put_contents( $filepath, $file_data );
 		
@@ -1076,7 +1078,7 @@ class Carabiner {
 	* Function used to prevent multiple load calls for the same CI library
 	* @access	private
 	* @param	String library name
-	* @return   FALSE on empty call and when library is already loaded, true when library loaded
+	* @return   FALSE on empty call and when library is already loaded, TRUE when library loaded
 	*/
 	private function _load($lib=NULL)
 	{
@@ -1086,7 +1088,8 @@ class Carabiner {
 			return FALSE;
 		else:
 			$this->CI->load->library($lib);
-			$this->loaded[] = $lib;
+			$this->loaded[$lib] = TRUE;
+			print_r($this->loaded);
 			log_message('debug', 'Carabiner: Codeigniter library '."'$lib'".' loaded');
 			return TRUE;
 		endif;
