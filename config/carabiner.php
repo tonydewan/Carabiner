@@ -120,7 +120,7 @@ $config['minify_css'] = TRUE;
 |
 */
 
-$config['force_curl'] = TRUE;
+$config['force_curl'] = FALSE;
 
 
 /*
