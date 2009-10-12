@@ -110,6 +110,18 @@ $config['minify_js'] = TRUE;
 
 $config['minify_css'] = TRUE;
 
+/*
+|--------------------------------------------------------------------------
+| Force cURL
+|--------------------------------------------------------------------------
+|
+| Global flag for whether to force the use of cURL instead of file_get_contents()
+| Defaults to FALSE.
+|
+*/
+
+$config['force_curl'] = TRUE;
+
 
 /*
 |--------------------------------------------------------------------------
