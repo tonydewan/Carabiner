@@ -252,12 +252,13 @@ class Carabiner {
 	public $minify_js  = TRUE;
 	public $minify_css = TRUE;
 	public $force_curl = FALSE;
+	public $extend  = FALSE;
 	
 	private $js  = array('main'=>array());
 	private $css = array('main'=>array());
-	private $loaded = array();
-	
-    private $CI;
+
+	protected $loaded = array();
+    protected $CI;
 	
 	
 	/** 
@@ -661,7 +662,7 @@ class Carabiner {
 
 					if( !file_exists($this->cache_path.$f) ):
 
-						$c = $this->_minify( 'js', $ref['dev'] );
+						$c = $this->_preprocess( 'js', $ref['dev'] );
 						$this->_cache($f, $c);
 				
 					endif;
@@ -688,7 +689,6 @@ class Carabiner {
 		}
 
 	}
-
 
 
 	/** 
@@ -812,7 +812,7 @@ class Carabiner {
 				
 						if( !file_exists($this->cache_path.$f) ):
 
-							$c = $this->_minify( 'css', $ref['dev'] );
+							$c = $this->_preprocess( 'css', $ref['dev'] );
 							$this->_cache($f, $c);
 					
 						endif;
@@ -867,7 +867,7 @@ class Carabiner {
 			
 			if( (isset($file['minify']) && $file['minify'] == true) || (!isset($file['minify']) && $minify) ):
 				
-				$file_data .=  $this->_minify( $flag, $file['dev'] ) . "\n";
+				$file_data .=  $this->_preprocess( $flag, $file['dev'] ) . "\n";
 				
 			else:
 			
@@ -882,46 +882,26 @@ class Carabiner {
 
 	}
 
-
+	
 	/** 
-	* Internal function for minifying assets
+	* Internal function for processing (minifying, by default) assets
 	* @access	private
 	* @param	String flag the asset type: css|js
 	* @param	String of the path to the file whose contents should be minified
 	* @return   String minified contents of file
 	*/
-	private function _minify($flag, $file_ref)
+	private function _preprocess($flag, $file_ref)
 	{
 		
 		$path = ($flag == 'css') ? $this->style_path : $this->script_path;
 		$ref  = ( $this->isURL($file_ref) ) ? $file_ref : realpath($path.$file_ref);
+		
+		$file = array($ref, $file_ref);
 
-		switch($flag){
-			
-			case 'js':
-			
-				$this->_load('jsmin');
-				
-				$contents = $this->_get_contents( $ref );
-				return $this->CI->jsmin->minify($contents);
-			
-			break;
-			
-			
-			case 'css':
-			
-				$this->_load('cssmin');
-				
-				$rel = ( $this->isURL($file_ref) ) ? $file_ref : dirname($this->style_uri.$file_ref).'/';
-				$this->CI->cssmin->config(array('relativePath'=>$rel));
-
-				$contents = $this->_get_contents( $ref );
-				return $this->CI->cssmin->minify($contents);
-			
-			break;
-		}
+		return $this->preprocess($flag, $file);
 	
 	}
+
 
 	/** 
 	* Internal function for getting a files contents, using cURL or file_get_contents, depending on circumstances
@@ -946,6 +926,7 @@ class Carabiner {
 		return $contents;
 		
 	}
+
 	
 	/** 
 	* Internal function for writing cache files
@@ -959,11 +940,13 @@ class Carabiner {
 		
 		if(empty($file_data)):
 			log_message('debug', 'Carabiner: Cache file '.$filename.' was empty and therefore not written to disk at '.$this->cache_path);
-			return false;
+			return FALSE;
 		endif;
 		
-		$filepath = $this->cache_path . $filename;
-		$success = file_put_contents( $filepath, $file_data );
+		//$filepath = $this->cache_path . $filename;
+		//$success = file_put_contents( $filepath, $file_data );
+		
+		$success = $this->cache($filename, $file_data);
 		
 		if($success) : 
 			log_message('debug', 'Carabiner: Cache file '.$filename.' was written to '.$this->cache_path);
@@ -973,7 +956,6 @@ class Carabiner {
 			return FALSE;
 		endif;
 	}
-	
 	
 	/** 
 	* Internal function for making tag strings
@@ -986,7 +968,10 @@ class Carabiner {
 	*/
 	private function _tag($flag, $ref, $cache = FALSE, $media = 'screen')
 	{
-
+		
+		if($cache && $this->extend && isset($this->CI->clovehitch) && method_exists('clovehitch', 'tag'))
+			return $this->CI->clovehitch->tag($flag, $ref, $media = 'screen');
+		
 		switch($flag){
 		
 			case 'css':
@@ -1008,6 +993,98 @@ class Carabiner {
 		}
 	
 	}	
+
+
+	/** 
+	* Function used to prevent multiple load calls for the same CI library
+	* @access	protected
+	* @param	String library name
+	* @return   FALSE on empty call and when library is already loaded, TRUE when library loaded
+	*/
+	protected function _load($lib=NULL)
+	{
+		if($lib == NULL) return FALSE;
+		
+		if( isset($this->loaded[$lib]) ):
+			return FALSE;
+		else:
+			$this->CI->load->library($lib);
+			$this->loaded[$lib] = TRUE;
+			log_message('debug', 'Carabiner: Codeigniter library '."'$lib'".' loaded');
+			return TRUE;
+		endif;
+	}
+	
+	
+	/** 
+	* Extendable function for making tag strings
+	* @access	private
+	* @param	String flag for type: css|js
+	* @param	String of reference of file. 
+	* @param	String Media type for the tag.  Only applies to CSS links. defaults to 'screen'
+	* @return	String containing an HTML tag reference to given reference
+	*/	
+	protected function tag($flag, $ref, $media = 'screen')
+	{
+		// this is just here to provide a prototype for clovehitch
+	}
+	
+	
+	/** 
+	* Extendable function for writing cache files to external sources.
+	* @access	protected
+	* @param	String of filename of the new file
+	* @param	String of contents of the new file
+	* @return   boolean	Returns true on successful cache, false on failure
+	*/	
+	protected function cache($filename, $file_data)
+	{
+		if( $this->extend && isset($this->CI->clovehitch) && method_exists('clovehitch', 'cache') ) 
+			return $this->CI->clovehitch->cache($filename, $file_data);
+		
+		$filepath = $this->cache_path . $filename;
+		return file_put_contents( $filepath, $file_data );
+	}
+
+	
+	/** 
+	* Internal function for preprocessing (minifying) asset content
+	* @access	protected
+	* @param	String flag the asset type: css|js
+	* @param	Array 2 strings: the 1st is the full path reference (or URL) to the file whose contents should be prepocessed, while the 2nd is the relative path
+	* @return   String minified contents of file
+	*/
+	protected function preprocess($flag, $ref)
+	{
+		
+		if( $this->extend && isset($this->CI->clovehitch) && method_exists('clovehitch', 'preprocess') ) 
+			return $this->CI->clovehitch->preprocess($filename, $file_data);
+		
+		switch($flag){
+			
+			case 'js':
+			
+				$this->_load('jsmin');
+				
+				$contents = $this->_get_contents( $ref[0] );
+				return $this->CI->jsmin->minify($contents);
+			
+			break;
+			
+			
+			case 'css':
+
+				$this->_load('cssmin');
+
+				$rel = ( $this->isURL($ref[0]) ) ? $ref[0] : dirname($this->style_uri.$ref[1]).'/';
+				$this->CI->cssmin->config(array('relativePath'=>$rel));
+
+				$contents = $this->_get_contents( $ref[0] );
+				return $this->CI->cssmin->minify($contents);
+			
+			break;
+		}
+	}
 	
 	
 	/** 
@@ -1072,27 +1149,6 @@ class Carabiner {
 		
 		}			
 	
-	}
-
-	/** 
-	* Function used to prevent multiple load calls for the same CI library
-	* @access	private
-	* @param	String library name
-	* @return   FALSE on empty call and when library is already loaded, TRUE when library loaded
-	*/
-	private function _load($lib=NULL)
-	{
-		if($lib == NULL) return FALSE;
-		
-		if( isset($this->loaded[$lib]) ):
-			return FALSE;
-		else:
-			$this->CI->load->library($lib);
-			$this->loaded[$lib] = TRUE;
-			print_r($this->loaded);
-			log_message('debug', 'Carabiner: Codeigniter library '."'$lib'".' loaded');
-			return TRUE;
-		endif;
 	}
 	
 	
