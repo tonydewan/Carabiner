@@ -9,7 +9,7 @@
  * @package		CodeIgniter
  * @subpackage	Libraries
  * @category	Javascript Minification
- * @author		Tony Dewan <tonydewan.com>
+ * @author		Tony Dewan <tonydewan.com/contact>
  **/
 
 /**

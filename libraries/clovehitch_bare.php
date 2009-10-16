@@ -51,7 +51,7 @@
 		}
 		
 		/** 
-		* Internal function for preprocessing (minifying) asset content
+		* Internal function for preprocessing (minifying/packing) asset content
 		* @access	protected
 		* @param	String flag the asset type: css|js
 		* @param	Array of 2 strings: the 1st is the full path reference (or URL) to the file whose contents should be prepocessed, while the 2nd is the filename/relative path

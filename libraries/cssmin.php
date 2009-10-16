@@ -6,7 +6,7 @@
  * Minifies CSS, preserving comments as directed. Note: This port moves the Minify_CommentPreserver 
  * class into this file, and adds a simple meta class to access the normal minify_css class.
  * 
- * @author Tony Dewan <tony@tonydewan.com>
+ * @author Tony Dewan <tonydewan.com/contact>
  * @version 1.1 (2009-01-28)
  * @license http://www.opensource.org/licenses/bsd-license.php BSD license, as per the original Minify_CSS class
  * 
