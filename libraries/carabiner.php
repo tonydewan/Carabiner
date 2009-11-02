@@ -31,11 +31,10 @@
  * @subpackage	Libraries
  * @category	Asset Management
  * @author		Tony Dewan <tonydewan.com/contact>	
- * @version		1.45
+ * @version		1.5
  * @license		http://www.opensource.org/licenses/bsd-license.php BSD licensed.
  *
  * @todo		fix new bugs. Duh.
- * @todo		check for 'absolute' path in asset references
  */
 
 /*
@@ -604,10 +603,9 @@ class Carabiner {
 			
 			$filename = $lastmodified . md5($filenames).'.js';
 			
-			if( !file_exists($this->cache_path.$filename) )	$this->_combine('js', $files, $filename);
-
-			echo $this->_tag('js', $filename, TRUE);
-
+			if( !file_exists($this->cache_path.$filename) || $this->_combine('js', $files, $filename) ):
+				echo $this->_tag('js', $filename, TRUE);
+			endif;
 
 		// if we're combining files but not minifying
 		} elseif($this->combine && !$this->minify_js) {
@@ -636,9 +634,9 @@ class Carabiner {
 			
 			$filename = $lastmodified . md5($filenames).'.js';
 			
-			if( !file_exists($this->cache_path.$filename) )	$this->_combine('js', $files, $filename);
-
-			echo $this->_tag('js', $filename, TRUE);
+			if( !file_exists($this->cache_path.$filename) || $this->_combine('js', $files, $filename) ):
+				echo $this->_tag('js', $filename, TRUE);
+			endif;
 			
 
 
@@ -750,9 +748,9 @@ class Carabiner {
 				
 				$filename = $lastmodified . md5($filenames).'.css';
 		
-				if( !file_exists($this->cache_path.$filename) ) $this->_combine('css', $files, $filename);
-
-				echo $this->_tag('css',  $filename, TRUE, $media);
+				if( !file_exists($this->cache_path.$filename) || $this->_combine('css', $files, $filename)):
+					echo $this->_tag('css',  $filename, TRUE, $media);
+				endif;
 		
 			endforeach;
 			
@@ -784,9 +782,9 @@ class Carabiner {
 				
 				$filename = $lastmodified . md5($filenames).'.css';
 			
-				if( !file_exists($this->cache_path.$filename) ) $this->_combine('css', $files, $filename);
-
-				echo $this->_tag('css',  $filename, TRUE, $media);
+				if( !file_exists($this->cache_path.$filename) || $this->_combine('css', $files, $filename) ):
+					echo $this->_tag('css',  $filename, TRUE, $media);
+				endif;
 			
 			endforeach;
 
@@ -878,7 +876,9 @@ class Carabiner {
 		
 		endforeach;
 		
-		$this->_cache( $filename, $file_data );
+		if($file_data == '') return FALSE;
+		
+		return $this->_cache( $filename, $file_data );
 
 	}
 

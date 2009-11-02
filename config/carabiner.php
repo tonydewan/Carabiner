@@ -122,6 +122,18 @@ $config['minify_css'] = TRUE;
 
 $config['force_curl'] = FALSE;
 
+/*
+|--------------------------------------------------------------------------
+| Extend
+|--------------------------------------------------------------------------
+|
+| Global flag for whether use the Clovehitch.php extension Library
+| Defaults to FALSE.
+|
+*/
+
+$config['extend'] = FALSE;
+
 
 /*
 |--------------------------------------------------------------------------

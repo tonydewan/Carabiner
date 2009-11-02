@@ -1,7 +1,7 @@
 <?php if (!defined('BASEPATH')) exit('No direct script access allowed');
 
 /**
- * Clovehitch
+ * Clovehitch: S3 Example
  * Extension class for Carabiner Asset Management Library
  *
  * This library is used to extend/change the methods of the Carabiner library.
@@ -38,7 +38,8 @@
 		*/	
 		protected function cache($filename, $file_data)
 		{
-			// load the external s3 library (using _load will ensure it's only requested once)
+			// load the external s3 library
+			// this is the same as $this->CI->load->library('s3'), but using _load will ensure it's only requested once
 			$this->_load('s3');
 			
 			return $this->CI->s3->putObjectFile($filename, $this->cdn_bucket, $filename, S3::ACL_PUBLIC_READ);
