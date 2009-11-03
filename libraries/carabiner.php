@@ -603,7 +603,7 @@ class Carabiner {
 			
 			$filename = $lastmodified . md5($filenames).'.js';
 			
-			if( !file_exists($this->cache_path.$filename) || $this->_combine('js', $files, $filename) ):
+			if( $this->_is_cached($filename) || $this->_combine('js', $files, $filename) ):
 				echo $this->_tag('js', $filename, TRUE);
 			endif;
 
@@ -634,7 +634,7 @@ class Carabiner {
 			
 			$filename = $lastmodified . md5($filenames).'.js';
 			
-			if( !file_exists($this->cache_path.$filename) || $this->_combine('js', $files, $filename) ):
+			if( $this->_is_cached($filename) || $this->_combine('js', $files, $filename) ):
 				echo $this->_tag('js', $filename, TRUE);
 			endif;
 			
@@ -748,7 +748,7 @@ class Carabiner {
 				
 				$filename = $lastmodified . md5($filenames).'.css';
 		
-				if( !file_exists($this->cache_path.$filename) || $this->_combine('css', $files, $filename)):
+				if( $this->_is_cached($filename) || $this->_combine('css', $files, $filename)):
 					echo $this->_tag('css',  $filename, TRUE, $media);
 				endif;
 		
@@ -756,7 +756,7 @@ class Carabiner {
 			
 
 		
-		} elseif($this->combine && !$this->minify_css) { // we're combining bot not minifying
+		} elseif($this->combine && !$this->minify_css) { // we're combining but not minifying
 			
 			foreach($this->css[$group] as $media => $refs):
 		
@@ -782,7 +782,7 @@ class Carabiner {
 				
 				$filename = $lastmodified . md5($filenames).'.css';
 			
-				if( !file_exists($this->cache_path.$filename) || $this->_combine('css', $files, $filename) ):
+				if( $this->_is_cached($filename) || $this->_combine('css', $files, $filename) ):
 					echo $this->_tag('css',  $filename, TRUE, $media);
 				endif;
 			
@@ -956,6 +956,25 @@ class Carabiner {
 			return FALSE;
 		endif;
 	}
+
+
+ 	/** 
+	* Internal function for verfying cache files
+	* @access	private
+	* @param	String of filename of the file
+	* @return   boolean	Returns true if they file is cached, false if it's not
+	*/
+	private function _is_cached($filename = NULL)
+	{
+		if($filename == NULL) return FALSE;
+		
+		if($cache && $this->extend && isset($this->CI->clovehitch) && method_exists('clovehitch', '_is_cached'))
+			return $this->CI->clovehitch->_is_cached($filename);
+		
+		return file_exists($this->cache_path.$filename);
+		
+	}
+
 	
 	/** 
 	* Internal function for making tag strings
@@ -1027,6 +1046,18 @@ class Carabiner {
 	protected function tag($flag, $ref, $media = 'screen')
 	{
 		// this is just here to provide a prototype for clovehitch
+	}
+	
+	
+	/** 
+	* Extendable function for verfying cache files
+	* @access	private
+	* @param	String of filename of the file
+	* @return   boolean	Returns true if they file is cached, false if it's not
+	*/
+	protected function is_cached($filename)
+	{
+		// this is just here to provide a prototype for clovehitch		
 	}
 	
 	

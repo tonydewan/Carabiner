@@ -7,7 +7,8 @@
  * This library is used to extend/change the methods of the Carabiner library.
  * At this time, the following methods are available to extend: 
  * 
- * 	cache($filename, $file_data) should return TRUE or FALSE on sucessful cache
+ * 	cache($filename, $file_data) should return TRUE or FALSE on successful cache
+ * 	is_cached($filename) should return TRUE or FALSE on if the file exists in the cache
  * 	tag($flag, $simple_file_path, $meda_type_for_css) should return a STRING of a tag reference
  * 	preprocess($flag, $array_of_path_and_filename) should return the new STRING of processed assets
  * 
@@ -35,6 +36,18 @@
 		{
 
 		}
+		
+		/** 
+		* Extendable function for verifying cache files
+		* @access	private
+		* @param	String of filename of the file
+		* @return   boolean	Returns true if they file is cached, false if it's not
+		*/
+		protected function is_cached($filename)
+		{
+
+		}
+
 		
 		/** 
 		* Extendable function for making tag strings.  
