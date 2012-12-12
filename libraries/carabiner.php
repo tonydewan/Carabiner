@@ -1107,7 +1107,7 @@ class Carabiner {
 	*/
 	public static function isURL($string)
 	{
-		$pattern = '@(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@';
+		$pattern = '@(((https?|ftp):)?//([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@';
 		return preg_match($pattern, $string);
 	}
 }
