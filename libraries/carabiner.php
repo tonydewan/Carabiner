@@ -935,7 +935,8 @@ class Carabiner {
 		if( $this->isURL($ref) && ( ini_get('allow_url_fopen') == 0 || $this->force_curl ) ):
 
 			$this->_load('curl');
-			$contents = $this->CI->curl->simple_get($ref);
+            $curl_ref = (substr($ref, 0, 2) == '//') ? ('http:' . $ref) : $ref;
+			$contents = $this->CI->curl->simple_get($curl_ref);
 			
 		else:
 
