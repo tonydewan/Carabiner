@@ -932,14 +932,16 @@ class Carabiner {
 	private function _get_contents($ref)
 	{
 
-		if( $this->isURL($ref) && ( ini_get('allow_url_fopen') == 0 || $this->force_curl ) ):
+        $abs_ref = ( substr($ref, 0, 2) == '//' ) ? ('http:' . $ref) : $ref;
+
+        if( $this->isURL($abs_ref) && ( ini_get('allow_url_fopen') == 0 || $this->force_curl ) ):
 
 			$this->_load('curl');
-			$contents = $this->CI->curl->simple_get($ref);
+			$contents = $this->CI->curl->simple_get($abs_ref);
 			
 		else:
 
-			$contents = file_get_contents( $ref );
+			$contents = file_get_contents( $abs_ref );
 			
 		endif;
 		
@@ -1107,7 +1109,7 @@ class Carabiner {
 	*/
 	public static function isURL($string)
 	{
-		$pattern = '@(https?://([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@';
+		$pattern = '@(((https?|ftp):)?//([-\w\.]+)+(:\d+)?(/([\w/_\.]*(\?\S+)?)?)?)@';
 		return preg_match($pattern, $string);
 	}
 }
