@@ -1109,7 +1109,7 @@ class Carabiner {
 		endif;
 	}
 
-	    
+
         /**
          * function will accept string or array of javascripts and group name 
          * as string
@@ -1134,7 +1134,7 @@ class Carabiner {
          * @return empty if group not found
          */
         
-        public function _display_js_string($group='main'){
+        private function _display_js_string($group='main'){
             $script = '';
             if(!empty($this->_js_string))
             {
@@ -1180,7 +1180,7 @@ class Carabiner {
          * @return empty if group not found in css
          */
         
-        public function _display_css_string($group = 'main'){
+        private function _display_css_string($group = 'main'){
             $style = '';
             if(!empty($this->_css_string))
             {
