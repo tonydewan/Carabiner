@@ -256,6 +256,8 @@ class Carabiner {
 	private $js  = array('main'=>array());
 	private $css = array('main'=>array());
 	private $loaded = array();
+	private $_js_string = array();
+    private $_css_string = array();
 	
     private $CI;
 	
@@ -501,24 +503,34 @@ class Carabiner {
 			case 'JS':
 			case 'js':
 				$this->_display_js();
+                $this->_display_js_string();
 			break;
 			
 			case 'CSS':
 			case 'css':
 				$this->_display_css();
+                $this->_display_css_string();
 			break;
 			
 			case 'both':
 				$this->_display_js();
 				$this->_display_css();
+                $this->_display_js_string();
+                $this->_display_css_string();
 			break;
 			
 			default:
-				if( isset($this->js[$flag]) && ($group_filter == NULL || $group_filter == 'js') )
-					$this->_display_js($flag);
+				if( isset($this->js[$flag]) && ($group_filter == NULL || $group_filter == 'js') ){
+                                    $this->_display_js($flag);
+                                    $this->_display_js_string($flag);
+                                }
+					
 				
-				if( isset($this->css[$flag]) && ($group_filter == NULL || $group_filter == 'css') )
+				if( isset($this->css[$flag]) && ($group_filter == NULL || $group_filter == 'css') ){
 					$this->_display_css($flag);
+					$this->_display_css_string($flag);
+				}
+					
 			break;
 		}
 	}
@@ -1096,6 +1108,100 @@ class Carabiner {
 			return TRUE;
 		endif;
 	}
+
+
+        /**
+         * function will accept string or array of javascripts and group name 
+         * as string
+         * @param mixed $string
+         * @param string $group
+         */
+        
+        public function js_string($string = NULL,$group='main'){
+            
+            $scripts = is_array($string)?$string:array($string);
+            
+            foreach ($scripts as $script){
+                if(strlen($script)){
+                    $this->_js_string[$group][] = $script;
+                }
+            }
+        }
+        
+        /**
+         * function will accept group name as string
+         * @param string $group
+         * @return empty if group not found
+         */
+        
+        private function _display_js_string($group='main'){
+            $script = '';
+            if(!empty($this->_js_string))
+            {
+                if( !isset($this->_js_string[$group]) ): // the group you asked for doesn't exist. This should never happen, but better to be safe than sorry.
+
+			log_message('error', "Carabiner: The JavaScript string group named '{$group}' does not exist.");
+			return;
+		
+		endif;
+                
+                $script = implode(';', $this->_js_string[$group]);
+                
+                if($this->minify_js && strlen($script)){
+                    $this->_load('jsmin');
+
+                    $script = $this->CI->jsmin->minify($script);
+                }
+                
+                echo '<script>'.$script.'</script>';
+            }
+        }
+        
+        /**
+         * function will accept string or array of styles and group name as string
+         * @param mixed $string
+         * @param string $group
+         */
+        
+        public function css_string($string = NULL,$group = 'main'){
+            
+            $styles = is_array($string)?$string:array($string);
+            
+            foreach ($styles as $style){
+                if(strlen($style)){
+                    $this->_css_string[$group][] = $style;
+                }
+            }
+        }
+        
+        /**
+         * function will accept group name as string
+         * @param string $group
+         * @return empty if group not found in css
+         */
+        
+        private function _display_css_string($group = 'main'){
+            $style = '';
+            if(!empty($this->_css_string))
+            {
+                
+                if( !isset($this->css[$group]) ): // the group you asked for doesn't exist. This should never happen, but better to be safe than sorry.
+
+			log_message('error', "Carabiner: The CSS string group named '{$group}' does not exist.");
+			return;
+		
+		endif;
+                
+                $style = implode('', $this->_css_string['main']);
+                
+                if($this->minify_css && strlen($style)){
+                    $this->_load('cssmin');
+                    $style = $this->CI->cssmin->minify($style);
+                }
+                
+                echo '<style type="text/css">'.$style.'</style>';
+            }
+        }
 	
 	
 	/**
