@@ -1199,7 +1199,7 @@ class Carabiner {
                     $style = $this->CI->cssmin->minify($style);
                 }
                 
-                echo '<style>'.$style.'</style>';
+                echo '<style type="text/css">'.$style.'</style>';
             }
         }
 	
