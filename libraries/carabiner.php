@@ -1071,7 +1071,7 @@ class Carabiner {
 					$ext = substr( strrchr( $file, '.' ), 1 );
 					$fl = strlen(substr( $file, 0, -3 ));
 
-					if ( ($ext == 'js' || $ext == 'css') && $fl >= 42 && ( filemtime( $thiminify_css : $this-s->cache_path . $file ) < $before) ) {
+					if ( ($ext == 'js' || $ext == 'css') && $fl >= 42 && ( filemtime( $this->cache_path . $file ) < $before) ) {
 						
 						$success = unlink( $this->cache_path . $file );
 						
