@@ -879,12 +879,12 @@ class Carabiner {
 			
 			if( (isset($file['minify']) && $file['minify'] == true) || (!isset($file['minify']) && $minify) ):
 				
-				$file_data .=  $this->_minify( $flag, $file['dev'] ) . "\n";
+				$file_data .=  $this->_minify( $flag, $file['dev'] ) . ";\n";
 				
 			else:
 			
 				$r = ( $this->isURL($file[$v]) ) ? $file[$v] : realpath($path.$file[$v]);
-				$file_data .=  $this->_get_contents( $r ) ."\n";
+				$file_data .=  $this->_get_contents( $r ) .";\n";
 				
 			endif;
 		
@@ -1071,7 +1071,7 @@ class Carabiner {
 					$ext = substr( strrchr( $file, '.' ), 1 );
 					$fl = strlen(substr( $file, 0, -3 ));
 
-					if ( ($ext == 'js' || $ext == 'css') && $fl >= 42 && ( filemtime( $this->cache_path . $file ) < $before) ) {
+					if ( ($ext == 'js' || $ext == 'css') && $fl >= 42 && ( filemtime( $thiminify_css : $this-s->cache_path . $file ) < $before) ) {
 						
 						$success = unlink( $this->cache_path . $file );
 						
