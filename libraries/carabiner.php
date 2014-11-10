@@ -879,12 +879,12 @@ class Carabiner {
 			
 			if( (isset($file['minify']) && $file['minify'] == true) || (!isset($file['minify']) && $minify) ):
 				
-				$file_data .=  $this->_minify( $flag, $file['dev'] ) . $suffix ."\n";
+				$file_data .= rtrim( $this->_minify( $flag, $file['dev'] ), $suffix ) . $suffix ."\n";
 				
 			else:
 			
 				$r = ( $this->isURL($file[$v]) ) ? $file[$v] : realpath($path.$file[$v]);
-				$file_data .=  $this->_get_contents( $r ) . $suffix ."\n";
+				$file_data .=  rtrim( $this->_get_contents( $r ), $suffix ) . $suffix ."\n";
 				
 			endif;
 		
