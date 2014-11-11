@@ -868,23 +868,23 @@ class Carabiner {
 	{
 
 		$file_data = '';
-		
+
+		$suffix = $flag == 'js' ? ';' : '';		
 		$path = ($flag == 'css') ? $this->style_path : $this->script_path;
 		$minify = ($flag == 'css') ? $this->minify_css : $this->minify_js;
-		
-	
+
 		foreach($files as $file):
 			
 			$v = (isset($file['prod']) ) ? 'prod' : 'dev';
 			
 			if( (isset($file['minify']) && $file['minify'] == true) || (!isset($file['minify']) && $minify) ):
 				
-				$file_data .=  $this->_minify( $flag, $file['dev'] ) . "\n";
+				$file_data .= rtrim( $this->_minify( $flag, $file['dev'] ), $suffix ) . $suffix ."\n";
 				
 			else:
 			
 				$r = ( $this->isURL($file[$v]) ) ? $file[$v] : realpath($path.$file[$v]);
-				$file_data .=  $this->_get_contents( $r ) ."\n";
+				$file_data .=  rtrim( $this->_get_contents( $r ), $suffix ) . $suffix ."\n";
 				
 			endif;
 		
