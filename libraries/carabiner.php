@@ -866,6 +866,29 @@ class Carabiner {
 	*/
 	private function _combine($flag, $files, $filename)
 	{
+		// Create a file lock to avoid concurrent processes calling
+		// this function simulatously, and generting this file many
+		// times concurrently, which puts huge load on the server
+		$lock_filename = $this->cache_path.$filename.'.lock';
+		$file_lock = fopen($lock_filename,"w+");
+		if (!flock($file_lock, LOCK_EX | LOCK_NB)) {
+			// Could not get lock
+			fclose($file_lock);
+
+			// how many seconds to wait for
+			$wait_for = 20;
+
+			// wait for the file to be created
+			while ($wait_for > 0) {
+				if (file_exists($filename)) {
+					break;
+				}
+				$wait_for--;
+				sleep(1);
+			}
+
+			return;
+		}
 
 		$file_data = '';
 
@@ -892,6 +915,9 @@ class Carabiner {
 		
 		$this->_cache( $filename, $file_data );
 
+		// release lock
+		flock($file_lock, LOCK_UN);
+		fclose($file_lock);
 	}
 
 
