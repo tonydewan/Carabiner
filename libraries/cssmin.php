@@ -60,7 +60,12 @@
 */
  
  class cssmin {
- 	
+
+	public function __construct()
+ 	{
+ 		$this->cssmin();
+ 	}
+
  	public function cssmin()
  	{
  		log_message('debug', 'CSSMin library initialized.');
